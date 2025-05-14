@@ -2,6 +2,7 @@ package com.chatbot.controller;
 
 import com.chatbot.service.GeminiAIService;
 import com.chatbot.service.DatabaseService;
+import com.chatbot.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,24 +27,41 @@ public class ChatbotController {
     }
 
     @PostMapping("/ask")
-    public ResponseEntity<String> processRequest(@RequestBody ChatRequest request) {
-        // Lấy context từ database dựa trên câu hỏi của người dùng
-        String databaseContext = databaseService.getRelevantDataForQuery(request.getQuestion());
+    public ResponseEntity<ChatResponse> processRequest(@RequestBody ChatRequest request) {
+        // Kiểm tra xem câu hỏi có liên quan đến database không
+        boolean isDatabaseQuery = request.getIsDatabaseQuery() == 1;
 
-        // Sử dụng Gemini AI để xử lý câu hỏi với context từ database
-        String response = geminiAIService.processCustomerRequest(request.getQuestion(), databaseContext);
+        // Chỉ lấy context từ database nếu là câu hỏi liên quan đến database
+        String databaseContext = isDatabaseQuery ? databaseService.getRelevantDataForQuery(request.getQuestion()) : "";
+
+        // Xử lý câu hỏi với loại phù hợp
+        ChatResponse response = geminiAIService.processCustomerRequest(
+                request.getQuestion(),
+                databaseContext,
+                isDatabaseQuery);
+
         return ResponseEntity.ok(response);
     }
+
 }
 
 class ChatRequest {
     private String question;
+    private int isDatabaseQuery;
 
     public String getQuestion() {
         return question;
     }
 
+    public int getIsDatabaseQuery() {
+        return isDatabaseQuery;
+    }
+
     public void setQuestion(String question) {
         this.question = question;
+    }
+
+    public void setIsDatabaseQuery(int isDatabaseQuery) {
+        this.isDatabaseQuery = isDatabaseQuery;
     }
 }
